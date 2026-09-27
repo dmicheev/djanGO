@@ -101,7 +101,7 @@ func main() {
 
 	app.GET("/", func(c *gd.Ctx) error {
 		return c.HTML(http.StatusOK, "index.html", map[string]any{
-			"Title": "go_django",
+			"Title": "djanGO",
 		})
 	})
 
