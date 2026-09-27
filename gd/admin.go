@@ -17,6 +17,12 @@ import (
 //go:embed admin_templates/*.html
 var adminTemplatesFS embed.FS
 
+type AdminAction struct {
+	Name    string
+	Label   string
+	Handler func(c *Ctx, db *DB, ids []int64) error
+}
+
 type ModelAdmin struct {
 	ListDisplay    []string
 	ListFilter     []string
@@ -26,6 +32,8 @@ type ModelAdmin struct {
 	Fields         []string
 	Exclude        []string
 	ReadOnlyFields []string
+	Actions        []AdminAction
+	Validators     map[string]func(v any) string
 	BeforeSave     func(c *Ctx, m any) error
 }
 
@@ -121,6 +129,7 @@ func (a *AdminSite) Mount(prefix string) {
 	a.app.POST(p+"/logout", a.handleLogout)
 	a.app.GET(p, a.guard(a.handleIndex))
 	a.app.GET(p+"/:m", a.guard(a.handleList))
+	a.app.POST(p+"/:m", a.guard(a.handleList))
 	a.app.GET(p+"/:m/add", a.guard(func(c *Ctx, s *Session) error { return a.handleForm(c, s, true) }))
 	a.app.POST(p+"/:m/add", a.guard(func(c *Ctx, s *Session) error { return a.handleForm(c, s, true) }))
 	a.app.GET(p+"/:m/:id", a.guard(func(c *Ctx, s *Session) error { return a.handleForm(c, s, false) }))
@@ -335,12 +344,17 @@ type listData struct {
 	HasNext     bool
 	NextURL     string
 	IsPaginated bool
+	Actions     []formOption
+	HasActions  bool
 }
 
 func (a *AdminSite) handleList(c *Ctx, s *Session) error {
 	am := a.model(c.Param("m"))
 	if am == nil {
 		return a.notFound(c)
+	}
+	if c.R.Method == http.MethodPost {
+		return a.runAction(c, s, am)
 	}
 	mi := am.mi
 	query := c.R.URL.Query()
@@ -412,6 +426,16 @@ func (a *AdminSite) handleList(c *Ctx, s *Session) error {
 	data.SearchQ = query.Get("q")
 	data.HasSearch = len(am.cfg.SearchFields) > 0
 	data.Total = total
+	data.Actions = append(data.Actions,
+		formOption{Value: "", Label: "---------"},
+		formOption{Value: "delete_selected", Label: fmt.Sprintf("Удалить выбранные %s", data.Label)},
+	)
+	for _, act := range am.cfg.Actions {
+		if act.Name != "" && act.Handler != nil {
+			data.Actions = append(data.Actions, formOption{Value: act.Name, Label: act.Label})
+		}
+	}
+	data.HasActions = len(data.Actions) > 2
 
 	currentOrder := ""
 	if o := query.Get("o"); o != "" {
@@ -488,6 +512,66 @@ func (a *AdminSite) handleList(c *Ctx, s *Session) error {
 	data.ClearURL = a.listURL(mi.URLName, "")
 
 	return a.render(c, http.StatusOK, "list.html", data)
+}
+
+func (a *AdminSite) runAction(c *Ctx, s *Session, am *adminModel) error {
+	if !csrfOK(c, s) {
+		return c.String(http.StatusBadRequest, "CSRF verification failed")
+	}
+	action := c.Form("action")
+	var ids []int64
+	for _, v := range c.R.Form["_selected"] {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			ids = append(ids, n)
+		}
+	}
+	if action == "" || len(ids) == 0 {
+		a.flash(c, s, "Ничего не выбрано.")
+		c.Redirect(a.listURL(am.mi.URLName, ""))
+		return nil
+	}
+	if action == "delete_selected" {
+		for _, id := range ids {
+			if err := a.db.DeleteByID(am.mi, id); err != nil {
+				return err
+			}
+		}
+		a.flash(c, s, fmt.Sprintf("Удалено объектов: %d.", len(ids)))
+		c.Redirect(a.listURL(am.mi.URLName, ""))
+		return nil
+	}
+	for _, act := range am.cfg.Actions {
+		if act.Name != action {
+			continue
+		}
+		if err := act.Handler(c, a.db, ids); err != nil {
+			return err
+		}
+		a.flash(c, s, fmt.Sprintf("%s: объектов: %d.", act.Label, len(ids)))
+		c.Redirect(a.listURL(am.mi.URLName, ""))
+		return nil
+	}
+	return a.notFound(c)
+}
+
+func (a *AdminSite) validate(am *adminModel, rv reflect.Value) map[string]string {
+	if len(am.cfg.Validators) == 0 {
+		return nil
+	}
+	errs := make(map[string]string)
+	for name, fn := range am.cfg.Validators {
+		f := am.mi.Field(name)
+		if f == nil || fn == nil {
+			continue
+		}
+		if msg := fn(rv.FieldByIndex(f.index).Interface()); msg != "" {
+			errs[name] = msg
+		}
+	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return errs
 }
 
 func (a *AdminSite) fkReprMaps(mi *ModelInfo, listFields []string) map[string]map[int64]string {
@@ -751,6 +835,9 @@ func (a *AdminSite) handleForm(c *Ctx, s *Session, add bool) error {
 		}
 		rv := reflect.New(mi.Type).Elem()
 		m2mSets, errs := a.parseForm(c, am, rv)
+		if len(errs) == 0 {
+			errs = a.validate(am, rv)
+		}
 		if len(errs) == 0 {
 			if !add {
 				rv.FieldByIndex(mi.PK.index).SetInt(id)

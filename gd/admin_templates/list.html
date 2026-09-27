@@ -13,30 +13,43 @@
 </div>
 <div id="changelist">
   <div class="results">
-    <div class="module">
-      <table id="result_list">
-        <thead>
-          <tr>
-            {{range .Columns}}<th scope="col">{{if .SortURL}}<a href="{{.SortURL}}">{{.Label}}{{if eq .Sorted "asc"}} &#9650;{{else if eq .Sorted "desc"}} &#9660;{{end}}</a>{{else}}{{.Label}}{{end}}</th>{{end}}
-            <th>Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{range .Rows}}
-          <tr>
-            {{range .Cells}}<td>{{.}}</td>{{end}}
-            <td>
-              <a class="changelink" href="{{.ChangeURL}}">Изменить</a>
-              <span class="mini">/</span>
-              <a class="deletelink" href="{{.DeleteURL}}">Удалить</a>
-            </td>
-          </tr>
-          {{else}}
-          <tr><td colspan="{{len .Columns}}">Ничего не найдено.</td></tr>
-          {{end}}
-        </tbody>
-      </table>
-    </div>
+    <form method="post" action="" id="changelist-form">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <div class="actions">
+        <label for="action-select">Действие:</label>
+        <select name="action" id="action-select">
+          {{range .Actions}}<option value="{{.Value}}">{{.Label}}</option>{{end}}
+        </select>
+        <button type="submit">Выполнить</button>
+        <span id="action-counter" class="mini"></span>
+      </div>
+      <div class="module">
+        <table id="result_list">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="action-toggle" title="Выбрать все"></th>
+              {{range .Columns}}<th scope="col">{{if .SortURL}}<a href="{{.SortURL}}">{{.Label}}{{if eq .Sorted "asc"}} &#9650;{{else if eq .Sorted "desc"}} &#9660;{{end}}</a>{{else}}{{.Label}}{{end}}</th>{{end}}
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Rows}}
+            <tr>
+              <td><input type="checkbox" name="_selected" value="{{.ID}}" class="action-select"></td>
+              {{range .Cells}}<td>{{.}}</td>{{end}}
+              <td>
+                <a class="changelink" href="{{.ChangeURL}}">Изменить</a>
+                <span class="mini">/</span>
+                <a class="deletelink" href="{{.DeleteURL}}">Удалить</a>
+              </td>
+            </tr>
+            {{else}}
+            <tr><td>Ничего не найдено.</td></tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </form>
     {{if .IsPaginated}}
     <p class="paginator">
       {{if .HasPrev}}<a href="{{.PrevURL}}">&laquo; Назад</a>{{end}}
@@ -60,4 +73,19 @@
   </div>
   {{end}}
 </div>
+<script>
+(function(){
+  var toggle=document.getElementById('action-toggle');
+  var counter=document.getElementById('action-counter');
+  function update(){
+    var n=document.querySelectorAll('.action-select:checked').length;
+    if(counter){counter.textContent=n?('Выбрано: '+n):'';}
+  }
+  if(toggle){toggle.addEventListener('change',function(){
+    document.querySelectorAll('.action-select').forEach(function(cb){cb.checked=toggle.checked;});
+    update();
+  });}
+  document.querySelectorAll('.action-select').forEach(function(cb){cb.addEventListener('change',update);});
+})();
+</script>
 {{template "footer" .}}

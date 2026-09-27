@@ -15,8 +15,9 @@ import gd "github.com/dmicheev/djanGO/gd"
 ```
 
 Ядро (`gd`) использует только стандартную библиотеку; СУБД подключается
-через `database/sql` — возьмите любой драйвер (демо использует pure-Go
-`modernc.org/sqlite` без CGO).
+через `database/sql` — возьмите любой драйвер: SQLite (`modernc.org/sqlite`,
+pure-Go, без CGO), PostgreSQL (`github.com/jackc/pgx/v5/stdlib`) или
+MySQL (`github.com/go-sql-driver/mysql`). Диалект определяется автоматически.
 
 ## Возможности
 
@@ -33,6 +34,9 @@ import gd "github.com/dmicheev/djanGO/gd"
 | ForeignKey / M2M | `gd:"fk:Model"`, `gd:"m2m:Model"` (+ junction-таблица), `M2MIDs/M2MSet` | `gd/db.go`, `gd/orm.go` |
 | **django.contrib.admin** | `gd.NewAdmin` + `Register(model, ModelAdmin{...})` | `gd/admin.go` |
 | auth | Логин, сессии (HMAC-cookie), PBKDF2-пароли, CSRF | `gd/session.go`, `gd/password.go` |
+| admin actions | Bulk-действия: «удалить выбранные» + кастомные | `gd/admin.go` |
+| cache framework | `gd.Cache` (TTL, janitor) + `CachePage` middleware | `gd/cache.go` |
+| БД: SQLite/PostgreSQL/MySQL | Диалекты: типы, `?`/`$n`, `RETURNING` | `gd/dialect.go` |
 
 ## Быстрый старт
 
@@ -164,16 +168,55 @@ admin.CreateUser("admin", "пароль", true) // суперюзер
 - **changelist** — таблица с сортировкой по любому столбцу (клик по заголовку),
   поиском, фильтрами (FK — по связанным объектам, bool — Да/Нет,
   прочие — по DISTINCT-значениям), пагинацией;
+- **bulk-действия** — чекбоксы, «удалить выбранные» + свои `Actions`:
+
+  ```go
+  Actions: []gd.AdminAction{{
+      Name:  "publish",
+      Label: "Опубликовать выбранные",
+      Handler: func(c *gd.Ctx, db *gd.DB, ids []int64) error { /* ... */ },
+  }},
+  ```
+
 - **формы** добавления/изменения, сгенерированные по типам полей:
   select для FK, multiselect для M2M, checkbox для bool,
   `datetime-local` для времени, textarea по тегу `widget:textarea`;
-- **валидация** (обязательные поля, типы, UNIQUE с человекочитаемой ошибкой);
+- **валидация** (обязательные поля, типы, UNIQUE с человекочитаемой ошибкой)
+  + кастомные clean-методы полей:
+
+  ```go
+  Validators: map[string]func(v any) string{
+      "Price": func(v any) string {
+          if v.(float64) <= 0 { return "Цена должна быть больше нуля" }
+          return ""
+      },
+  },
+  ```
+
 - **удаление** с confirm-страницей;
 - **auth**: страница логина, сессии в подписанной HMAC-cookie,
   пароли PBKDF2-SHA256, CSRF-токены во всех формах.
 
 Действие BeforeSave может отклонить сохранение, вернув ошибку — она
 покажется в форме (как `clean()` в Django).
+
+## Кэширование
+
+```go
+cache := gd.NewCache(5 * time.Minute)
+defer cache.Close()
+
+cache.Set("key", value)
+v, ok := cache.Get("key")
+v, err := cache.GetOrSet("key", func() (any, error) { return compute(), nil })
+cache.Delete("key")
+
+// кэширование целых страниц (GET-ответов):
+app.GET("/expensive", gd.CachePage(cache, time.Minute, handler))
+```
+
+Кэш в памяти, с фоновым janitor'ом; ответ помечается заголовком
+`X-Cache: HIT|MISS`.
 
 ## Остальное
 
@@ -217,9 +260,11 @@ gd/                 пакет фреймворка (только stdlib, под
   model.go          метаданные моделей: теги, имена таблиц, связи
   db.go             OpenDB, Register (авто-миграции, FK, M2M junction)
   orm.go            CRUD, query builder, M2M
-  admin.go          AdminSite, ModelAdmin, генерация UI
+  admin.go          AdminSite, ModelAdmin, генерация UI, bulk-действия
   session.go        сессии (HMAC-cookie)
   password.go       PBKDF2-SHA256
+  cache.go          gd.Cache + CachePage middleware
+  dialect.go        диалекты SQLite/PostgreSQL/MySQL
   admin_templates/  встроенные шаблоны админки (embed)
 example/            демо-приложение (Author/Tag/Book + админка)
   main.go
@@ -232,10 +277,14 @@ docs/               скриншоты
 - [x] Мини-ORM: модели через теги, миграции
 - [x] Сессии и аутентификация (cookie + PBKDF2)
 - [x] Админ-панель с автогенерацией CRUD
-- [ ] Валидация форм (кастомные clean-методы полей)
-- [x] Кэширование — пока нет; вместо него busy_timeout и индексы
-- [ ] Кастомные действия в changelist (bulk delete и т.п.)
-- [ ] Драйверы PostgreSQL/MySQL (диалектная прослойка)
+- [x] Валидация форм (обязательные поля, типы, clean-методы `Validators`)
+- [x] Кэширование (`gd.Cache`, `CachePage`)
+- [x] Bulk-действия в changelist (+ кастомные `Actions`)
+- [x] Диалекты PostgreSQL/MySQL/SQLite (PostgreSQL/MySQL — экспериментально,
+      автотесты покрывают генерацию SQL; для SQLite — полный e2e)
+
+Идеи дальше: персистентные сессии, групповые права в админке,
+`makemigrations`-файлы вместо автосхемы, кастомизация шаблонов админки.
 
 ## Тесты
 

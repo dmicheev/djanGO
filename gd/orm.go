@@ -36,11 +36,21 @@ func (db *DB) Create(m any) error {
 	}
 	ph := strings.TrimSuffix(strings.Repeat("?,", len(cols)), ",")
 	stmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", mi.Table, strings.Join(cols, ", "), ph)
+	var id int64
+	if db.dialect.NeedsReturning() {
+		stmt += " RETURNING " + mi.PK.Column
+		err := db.QueryRow(db.dialect.Rebind(stmt), args...).Scan(&id)
+		if err != nil {
+			return fmt.Errorf("gd: insert %s: %w", mi.Table, err)
+		}
+		rv.FieldByIndex(mi.PK.index).SetInt(id)
+		return nil
+	}
 	res, err := db.Exec(stmt, args...)
 	if err != nil {
 		return fmt.Errorf("gd: insert %s: %w", mi.Table, err)
 	}
-	id, err := res.LastInsertId()
+	id, err = res.LastInsertId()
 	if err == nil {
 		rv.FieldByIndex(mi.PK.index).SetInt(id)
 	}
@@ -67,7 +77,7 @@ func (db *DB) Update(m any) error {
 	}
 	args = append(args, rv.FieldByIndex(mi.PK.index).Int())
 	stmt := fmt.Sprintf("UPDATE %s SET %s WHERE %s = ?", mi.Table, strings.Join(sets, ", "), mi.PK.Column)
-	if _, err := db.Exec(stmt, args...); err != nil {
+	if _, err := db.Exec(db.dialect.Rebind(stmt), args...); err != nil {
 		return fmt.Errorf("gd: update %s: %w", mi.Table, err)
 	}
 	return nil
@@ -98,14 +108,15 @@ func (db *DB) DeleteByID(mi *ModelInfo, id int64) error {
 			rel := db.models[f.RelModel]
 			if rel != nil {
 				jt := junctionTable(mi, rel)
-				if _, err := db.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s = ?", jt, singular(mi.Table)+"_id"), id); err != nil {
+				stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", jt, singular(mi.Table)+"_id")
+				if _, err := db.Exec(db.dialect.Rebind(stmt), id); err != nil {
 					return fmt.Errorf("gd: m2m cleanup %s: %w", jt, err)
 				}
 			}
 		}
 	}
 	stmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", mi.Table, mi.PK.Column)
-	if _, err := db.Exec(stmt, id); err != nil {
+	if _, err := db.Exec(db.dialect.Rebind(stmt), id); err != nil {
 		return fmt.Errorf("gd: delete %s: %w", mi.Table, err)
 	}
 	return nil
@@ -244,7 +255,7 @@ func (q *Query) All(dst any) error {
 	slice := dv.Elem()
 	slice.Set(slice.Slice(0, 0))
 	stmt, args := q.buildSelect()
-	rows, err := q.db.Query(stmt, args...)
+	rows, err := q.db.Query(q.db.dialect.Rebind(stmt), args...)
 	if err != nil {
 		return fmt.Errorf("gd: select %s: %w", q.mi.Table, err)
 	}
@@ -266,7 +277,7 @@ func (q *Query) Count() (int, error) {
 		stmt += " WHERE " + strings.Join(q.wheres, " AND ")
 	}
 	var n int
-	if err := q.db.QueryRow(stmt, q.args...).Scan(&n); err != nil {
+	if err := q.db.QueryRow(q.db.dialect.Rebind(stmt), q.args...).Scan(&n); err != nil {
 		return 0, fmt.Errorf("gd: count %s: %w", q.mi.Table, err)
 	}
 	return n, nil
@@ -471,11 +482,9 @@ func (db *DB) M2MIDs(owner any, field string) ([]int64, error) {
 		return nil, fmt.Errorf("gd: %s.%s is not a m2m field", mi.Name, field)
 	}
 	jt := junctionTable(mi, rel)
-	rows, err := db.Query(
-		fmt.Sprintf("SELECT %s FROM %s WHERE %s = ? ORDER BY %s",
-			singular(rel.Table)+"_id", jt, singular(mi.Table)+"_id", singular(rel.Table)+"_id"),
-		rv.FieldByIndex(mi.PK.index).Int(),
-	)
+	stmt := fmt.Sprintf("SELECT %s FROM %s WHERE %s = ? ORDER BY %s",
+		singular(rel.Table)+"_id", jt, singular(mi.Table)+"_id", singular(rel.Table)+"_id")
+	rows, err := db.Query(db.dialect.Rebind(stmt), rv.FieldByIndex(mi.PK.index).Int())
 	if err != nil {
 		return nil, err
 	}
@@ -508,15 +517,13 @@ func (db *DB) M2MSet(owner any, field string, ids []int64) error {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s = ?", jt, singular(mi.Table)+"_id"), srcID); err != nil {
+	delStmt := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", jt, singular(mi.Table)+"_id")
+	if _, err := tx.Exec(db.dialect.Rebind(delStmt), srcID); err != nil {
 		return err
 	}
+	insStmt := db.dialect.InsertIgnore(jt, singular(mi.Table)+"_id, "+singular(rel.Table)+"_id")
 	for _, id := range ids {
-		if _, err := tx.Exec(
-			fmt.Sprintf("INSERT OR IGNORE INTO %s (%s, %s) VALUES (?, ?)",
-				jt, singular(mi.Table)+"_id", singular(rel.Table)+"_id"),
-			srcID, id,
-		); err != nil {
+		if _, err := tx.Exec(db.dialect.Rebind(insStmt), srcID, id); err != nil {
 			return err
 		}
 	}

@@ -51,10 +51,16 @@ func (a *App) Handle(method, path string, h Handler) {
 }
 
 func (a *App) Mount(prefix string, h http.Handler) {
-	a.GET(prefix+"/*", func(c *Ctx) error {
+	handler := func(c *Ctx) error {
 		h.ServeHTTP(c.W, c.R)
 		return nil
-	})
+	}
+	for _, m := range []string{
+		http.MethodGet, http.MethodPost, http.MethodPut,
+		http.MethodPatch, http.MethodDelete, http.MethodHead, http.MethodOptions,
+	} {
+		a.Handle(m, prefix+"/*", handler)
+	}
 }
 
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {

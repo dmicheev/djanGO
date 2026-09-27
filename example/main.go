@@ -82,6 +82,31 @@ func main() {
 		SearchFields: []string{"Title", "Description"},
 		Ordering:     []string{"-CreatedAt"},
 		ListPerPage:  10,
+		Validators: map[string]func(v any) string{
+			"Price": func(v any) string {
+				if v.(float64) <= 0 {
+					return "Цена должна быть больше нуля"
+				}
+				return ""
+			},
+		},
+		Actions: []gd.AdminAction{{
+			Name:  "publish",
+			Label: "Опубликовать выбранные книги",
+			Handler: func(c *gd.Ctx, db *gd.DB, ids []int64) error {
+				for _, id := range ids {
+					var b Book
+					if err := db.FindByID(&b, id); err != nil {
+						return err
+					}
+					b.Published = true
+					if err := db.Update(&b); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		}},
 		BeforeSave: func(c *gd.Ctx, m any) error {
 			book, ok := m.(*Book)
 			if !ok {

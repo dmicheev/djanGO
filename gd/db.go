@@ -11,6 +11,7 @@ import (
 type DB struct {
 	*sql.DB
 	driver  string
+	dialect *Dialect
 	models  map[string]*ModelInfo
 	byType  map[reflect.Type]*ModelInfo
 	byTable map[string]*ModelInfo
@@ -21,7 +22,8 @@ func OpenDB(driver, dsn string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	if strings.Contains(driver, "sqlite") {
+	dialect := DetectDialect(driver)
+	if dialect.Name == "sqlite" {
 		for _, pragma := range []string{"PRAGMA foreign_keys=ON", "PRAGMA busy_timeout=5000"} {
 			if _, err := sdb.Exec(pragma); err != nil {
 				sdb.Close()
@@ -36,6 +38,7 @@ func OpenDB(driver, dsn string) (*DB, error) {
 	return &DB{
 		DB:      sdb,
 		driver:  driver,
+		dialect: dialect,
 		models:  make(map[string]*ModelInfo),
 		byType:  make(map[reflect.Type]*ModelInfo),
 		byTable: make(map[string]*ModelInfo),
@@ -155,24 +158,6 @@ func topoSort(all map[string]*ModelInfo, batch []*ModelInfo) ([]*ModelInfo, erro
 	return order, nil
 }
 
-func sqlType(f *Field) string {
-	switch f.Kind {
-	case kindInt, kindBool:
-		return "INTEGER"
-	case kindFloat:
-		return "REAL"
-	case kindString:
-		if f.Len > 0 {
-			return fmt.Sprintf("VARCHAR(%d)", f.Len)
-		}
-		return "TEXT"
-	case kindTime:
-		return "TIMESTAMP"
-	default:
-		return "TEXT"
-	}
-}
-
 func (db *DB) migrateTable(mi *ModelInfo) error {
 	existing, err := db.tableColumns(mi.Table)
 	if err != nil {
@@ -184,10 +169,11 @@ func (db *DB) migrateTable(mi *ModelInfo) error {
 			if f.Kind == kindM2M {
 				continue
 			}
-			col := fmt.Sprintf("%s %s", f.Column, sqlType(f))
+			var col string
 			if f.Primary {
-				col += " PRIMARY KEY AUTOINCREMENT"
+				col = db.dialect.PKColumnDef(f)
 			} else {
+				col = fmt.Sprintf("%s %s", f.Column, db.dialect.SQLType(f))
 				if !f.Nullable {
 					col += " NOT NULL"
 				}
@@ -217,8 +203,8 @@ func (db *DB) migrateTable(mi *ModelInfo) error {
 			if f.Kind == kindM2M || existing[f.Column] {
 				continue
 			}
-			alter := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", mi.Table, f.Column, sqlType(f))
-			if _, err := db.Exec(alter); err != nil {
+			alter := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", mi.Table, f.Column, db.dialect.SQLType(f))
+			if _, err := db.Exec(db.dialect.Rebind(alter)); err != nil {
 				return fmt.Errorf("gd: alter %s.%s: %w", mi.Table, f.Column, err)
 			}
 		}
@@ -263,18 +249,16 @@ func junctionTable(owner, rel *ModelInfo) string {
 }
 
 func (db *DB) tableColumns(table string) (map[string]bool, error) {
-	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+	query := db.dialect.TableColumnsQuery()
+	rows, err := db.Query(db.dialect.Rebind(query), table)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	cols := make(map[string]bool)
 	for rows.Next() {
-		var cid int
-		var name, ctype string
-		var notNull, pk int
-		var dflt any
-		if err := rows.Scan(&cid, &name, &ctype, &notNull, &dflt, &pk); err != nil {
+		var name string
+		if err := rows.Scan(&name); err != nil {
 			return nil, err
 		}
 		cols[name] = true
