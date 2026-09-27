@@ -1,4 +1,4 @@
-module github.com/dmicheev/go_django
+module github.com/dmicheev/djanGO
 
 go 1.27.1
 

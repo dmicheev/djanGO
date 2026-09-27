@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}} | go_django admin</title>
+<title>{{.Title}} | djanGO admin</title>
 <style>
 :root{--primary:#79aecf;--primary-dark:#417690;--accent:#0c4128;--danger:#ba2121;--bg:#f8f8f8;--border:#e0e0e0;--text:#333}
 *{box-sizing:border-box}
@@ -70,7 +70,7 @@ form.inline{display:inline}
 </head>
 <body>
 <div id="header">
-  <a class="brand" href="{{.Prefix}}/">go_django administration</a>
+  <a class="brand" href="{{.Prefix}}/">djanGO administration</a>
   {{if .User}}<span>{{.User}} &middot; <form class="inline" method="post" action="{{.Prefix}}/logout" id="logout-form"></form><a href="#" onclick="var f=document.createElement('form');f.method='post';f.action='{{.Prefix}}/logout';var i=document.createElement('input');i.type='hidden';i.name='csrf';i.value='{{.CSRF}}';f.appendChild(i);document.body.appendChild(f);f.submit();return false;">Выйти</a></span>{{end}}
 </div>
 <div id="branding"></div>
@@ -80,7 +80,7 @@ form.inline{display:inline}
 
 {{define "footer"}}
 </div>
-<div id="footer">go_django mini-framework</div>
+<div id="footer">djanGO mini-framework</div>
 </body>
 </html>
 {{end}}

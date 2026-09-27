@@ -12,7 +12,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	gd "github.com/dmicheev/go_django/gd"
+	gd "github.com/dmicheev/djanGO/gd"
 )
 
 type Tag struct {

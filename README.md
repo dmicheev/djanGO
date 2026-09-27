@@ -1,4 +1,4 @@
-# go_django
+# djanGO
 
 Мини-фреймворк для веба на Go, вдохновлённый Django: роутер, middleware,
 контекст запроса, шаблоны, настройки, сервер с graceful shutdown,
@@ -7,11 +7,11 @@
 Подключается как обычная Go-библиотека:
 
 ```bash
-go get github.com/dmicheev/go_django/gd
+go get github.com/dmicheev/djanGO/gd
 ```
 
 ```go
-import gd "github.com/dmicheev/go_django/gd"
+import gd "github.com/dmicheev/djanGO/gd"
 ```
 
 Ядро (`gd`) использует только стандартную библиотеку; СУБД подключается
@@ -20,7 +20,7 @@ import gd "github.com/dmicheev/go_django/gd"
 
 ## Возможности
 
-| Django | go_django | Где |
+| Django | djanGO | Где |
 |---|---|---|
 | `urls.py` + views | Роутер с параметрами `:id`, wildcard `*`, авт. 404/405 | `gd/router.go` |
 | HttpRequest/Response | `*gd.Ctx`: JSON, HTML, Bind, Redirect, Cookie | `gd/context.go` |
@@ -41,7 +41,7 @@ import gd "github.com/dmicheev/go_django/gd"
 В своём проекте:
 
 ```bash
-go get github.com/dmicheev/go_django/gd
+go get github.com/dmicheev/djanGO/gd
 go get modernc.org/sqlite        # или другой driver для database/sql
 ```
 
@@ -51,7 +51,7 @@ package main
 import (
     _ "modernc.org/sqlite"
 
-    gd "github.com/dmicheev/go_django/gd"
+    gd "github.com/dmicheev/djanGO/gd"
 )
 
 type Note struct {
@@ -76,8 +76,8 @@ func main() {
 Или запустите демо из этого репозитория:
 
 ```bash
-git clone https://github.com/dmicheev/go_django.git
-cd go_django
+git clone https://github.com/dmicheev/djanGO.git
+cd djanGO
 go run ./example
 # сайт: http://localhost:8000
 # админка: http://localhost:8000/admin (admin/admin)
@@ -190,7 +190,7 @@ app := gd.New(gd.Settings{
 app.Use(gd.Logger(), gd.Recover())
 
 app.GET("/", func(c *gd.Ctx) error {
-    return c.HTML(http.StatusOK, "index.html", map[string]any{"Title": "go_django"})
+    return c.HTML(http.StatusOK, "index.html", map[string]any{"Title": "djanGO"})
 })
 
 log.Fatal(app.Run())
