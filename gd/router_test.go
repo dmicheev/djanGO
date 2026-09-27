@@ -26,9 +26,9 @@ func TestRouterMatch(t *testing.T) {
 	rt.Add("GET", "/exact", func(c *Ctx) error { return nil })
 
 	cases := []struct {
-		path      string
-		ok        bool
-		params    map[string]string
+		path   string
+		ok     bool
+		params map[string]string
 	}{
 		{"/hello/go", true, map[string]string{"name": "go"}},
 		{"/hello", false, nil},

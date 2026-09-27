@@ -1,0 +1,16 @@
+{{template "header" .}}
+<div class="breadcrumbs">
+  <a href="{{.Prefix}}/">Главная</a> &rsaquo; <a href="{{.ListURL}}">{{.Label}}</a> &rsaquo; Удаление
+</div>
+<h1>Удаление</h1>
+<div class="delete-warn">
+  <p>Вы уверены, что хотите удалить {{.Singular}} «<strong>{{.ObjectRepr}}</strong>?»</p>
+  <form method="post" action="">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="submit-row">
+      <button class="default" type="submit">Да, я уверен</button>
+      <a href="{{.ListURL}}">Отмена</a>
+    </div>
+  </form>
+</div>
+{{template "footer" .}}

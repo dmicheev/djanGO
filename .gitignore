@@ -1,6 +1,7 @@
-godjango
+example/example
 *.exe
 *.test
 *.out
 .DS_Store
 __debug_bin*
+*.db

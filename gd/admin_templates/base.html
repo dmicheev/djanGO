@@ -1,0 +1,86 @@
+{{define "header"}}<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} | go_django admin</title>
+<style>
+:root{--primary:#79aecf;--primary-dark:#417690;--accent:#0c4128;--danger:#ba2121;--bg:#f8f8f8;--border:#e0e0e0;--text:#333}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;color:var(--text);background:var(--bg)}
+a{color:var(--primary-dark);text-decoration:none}
+a:hover{color:var(--accent)}
+#header{background:linear-gradient(180deg,#417690,#5b8fae);color:#fff;padding:10px 24px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 4px rgba(0,0,0,.2)}
+#header .brand{font-size:18px;font-weight:700;color:#fff}
+#header a{color:#ffc}
+#branding{height:60px}
+#content{padding:20px 24px;max-width:1200px;margin:0 auto}
+.breadcrumbs{padding:8px 0;font-size:13px;color:#999}
+.breadcrumbs a{color:#999}
+.module{background:#fff;border:1px solid var(--border);border-radius:4px;margin-bottom:20px;overflow:hidden}
+.module h2,.module caption{margin:0;padding:8px 12px;background:var(--primary);color:#fff;font-size:13px;text-transform:uppercase;letter-spacing:.5px;text-align:left}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+thead th{background:#f8f8f8;font-size:12px;text-transform:uppercase;color:#666;white-space:nowrap}
+thead th a{color:#666}
+tbody tr:hover{background:#f4f9ff}
+td .mini{font-size:12px;color:#999;margin-left:8px}
+.submit-row{padding:12px;background:#f8f8f8;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
+button,input[type=submit]{background:var(--primary);color:#fff;border:none;border-radius:4px;padding:8px 16px;font-size:14px;cursor:pointer}
+button.default{background:var(--accent)}
+button:hover{opacity:.9}
+.button{display:inline-block;background:var(--primary);color:#fff!important;border-radius:4px;padding:8px 16px;border:none;font-size:14px}
+.button.danger{background:var(--danger)}
+form.inline{display:inline}
+.object-tools{display:flex;gap:8px;margin:12px 0}
+.form-row{padding:12px;border-bottom:1px solid var(--border);display:flex;gap:16px}
+.form-row:last-child{border-bottom:none}
+.form-row label{display:block;font-weight:600;width:180px;flex-shrink:0}
+.form-row .field-box{flex:1}
+.form-row input[type=text],.form-row input[type=number],.form-row input[type=password],.form-row input[type=datetime-local],.form-row input[type=search],.form-row textarea,.form-row select{width:100%;max-width:420px;padding:6px 8px;border:1px solid var(--border);border-radius:3px;font-size:14px;font-family:inherit}
+.form-row textarea{min-height:120px}
+.form-row .errorlist{margin:4px 0 0;padding:4px 8px;background:#ffe5e5;color:var(--danger);border-radius:3px;list-style:none;font-size:13px}
+.form-row.required label:after{content:" *";color:var(--danger)}
+.form-row.readonly .field-box{padding:6px 0;color:#555}
+.errorsnote{background:#ffe5e5;border:1px solid var(--danger);color:var(--danger);padding:10px 14px;border-radius:4px;margin-bottom:16px}
+.messagelist{list-style:none;padding:0;margin:0 0 16px}
+.messagelist li{background:#dcf1dd;border:1px solid #7dc77f;color:#1c451d;padding:10px 14px;border-radius:4px;margin-bottom:8px}
+.paginator{font-size:13px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.paginator .this-page{font-weight:700;padding:2px 8px}
+.paginator a{padding:2px 8px}
+#changelist{display:flex;gap:20px;align-items:flex-start}
+#changelist .results{flex:1;min-width:0}
+#changelist-filter{width:220px;flex-shrink:0}
+#changelist-filter h2{background:#f8f8f8;color:#666}
+#changelist-filter h3{margin:12px 0 4px;font-size:12px;text-transform:uppercase;color:#999}
+#changelist-filter ul{list-style:none;margin:0;padding:0}
+#changelist-filter li{padding:3px 0}
+#changelist-filter li.selected a{font-weight:700;color:var(--accent)}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px}
+.toolbar input[type=search]{padding:6px 10px;border:1px solid var(--border);border-radius:3px;width:240px}
+.login-card{max-width:400px;margin:80px auto;background:#fff;border:1px solid var(--border);border-radius:6px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.06)}
+.login-card h1{background:var(--primary);color:#fff;margin:0;padding:14px 20px;font-size:18px}
+.login-card form{padding:20px}
+.login-card .form-row{display:block}
+.login-card label{width:auto;margin-bottom:4px}
+.errornote{background:#ffe5e5;border:1px solid var(--danger);color:var(--danger);padding:10px 14px;border-radius:4px;margin-bottom:12px}
+#footer{padding:16px 24px;color:#999;font-size:12px;text-align:center}
+.delete-warn{background:#fff;border:1px solid var(--border);border-left:4px solid var(--danger);border-radius:4px;padding:20px}
+</style>
+</head>
+<body>
+<div id="header">
+  <a class="brand" href="{{.Prefix}}/">go_django administration</a>
+  {{if .User}}<span>{{.User}} &middot; <form class="inline" method="post" action="{{.Prefix}}/logout" id="logout-form"></form><a href="#" onclick="var f=document.createElement('form');f.method='post';f.action='{{.Prefix}}/logout';var i=document.createElement('input');i.type='hidden';i.name='csrf';i.value='{{.CSRF}}';f.appendChild(i);document.body.appendChild(f);f.submit();return false;">Выйти</a></span>{{end}}
+</div>
+<div id="branding"></div>
+<div id="content">
+{{if .Flash}}<ul class="messagelist"><li>{{.Flash}}</li></ul>{{end}}
+{{end}}
+
+{{define "footer"}}
+</div>
+<div id="footer">go_django mini-framework</div>
+</body>
+</html>
+{{end}}

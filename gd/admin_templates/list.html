@@ -1,0 +1,63 @@
+{{template "header" .}}
+<div class="breadcrumbs"><a href="{{.Prefix}}/">Главная</a> &rsaquo; {{.Label}}</div>
+<h1>{{.Title}}</h1>
+<div class="toolbar">
+  <div class="object-tools">
+    <a href="{{.AddURL}}" class="button">Добавить {{.Singular}}</a>
+  </div>
+  {{if .HasSearch}}
+  <form method="get" action="">
+    <input type="search" name="q" value="{{.SearchQ}}" placeholder="Поиск">
+  </form>
+  {{end}}
+</div>
+<div id="changelist">
+  <div class="results">
+    <div class="module">
+      <table id="result_list">
+        <thead>
+          <tr>
+            {{range .Columns}}<th scope="col">{{if .SortURL}}<a href="{{.SortURL}}">{{.Label}}{{if eq .Sorted "asc"}} &#9650;{{else if eq .Sorted "desc"}} &#9660;{{end}}</a>{{else}}{{.Label}}{{end}}</th>{{end}}
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Rows}}
+          <tr>
+            {{range .Cells}}<td>{{.}}</td>{{end}}
+            <td>
+              <a class="changelink" href="{{.ChangeURL}}">Изменить</a>
+              <span class="mini">/</span>
+              <a class="deletelink" href="{{.DeleteURL}}">Удалить</a>
+            </td>
+          </tr>
+          {{else}}
+          <tr><td colspan="{{len .Columns}}">Ничего не найдено.</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{if .IsPaginated}}
+    <p class="paginator">
+      {{if .HasPrev}}<a href="{{.PrevURL}}">&laquo; Назад</a>{{end}}
+      {{range .Pages}}{{if .Active}}<span class="this-page">{{.Label}}</span>{{else}}<a href="{{.URL}}">{{.Label}}</a>{{end}} {{end}}
+      {{if .HasNext}}<a href="{{.NextURL}}">Вперёд &raquo;</a>{{end}}
+      &nbsp; Всего: {{.Total}}
+    </p>
+    {{end}}
+  </div>
+  {{if .HasFilters}}
+  <div id="changelist-filter">
+    <h2>Фильтр</h2>
+    {{range .Filters}}
+    <h3>{{.Title}}</h3>
+    <ul>
+      {{range .Choices}}
+      <li{{if .Active}} class="selected"{{end}}><a href="{{.URL}}">{{.Label}}</a></li>
+      {{end}}
+    </ul>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{template "footer" .}}

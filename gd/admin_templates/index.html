@@ -1,0 +1,17 @@
+{{template "header" .}}
+<div class="breadcrumbs"><a href="{{.Prefix}}/">Главная</a></div>
+<h1>{{.Title}}</h1>
+<div id="content-main">
+  <div class="module">
+    <table>
+      <caption>Модели приложений</caption>
+      {{range .Models}}
+      <tr>
+        <th scope="row"><a href="{{.URL}}">{{.Label}}</a></th>
+        <td><a href="{{.URL}}/add" class="addlink">Добавить</a></td>
+      </tr>
+      {{end}}
+    </table>
+  </div>
+</div>
+{{template "footer" .}}

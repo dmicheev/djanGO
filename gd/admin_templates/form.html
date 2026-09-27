@@ -1,0 +1,49 @@
+{{template "header" .}}
+<div class="breadcrumbs">
+  <a href="{{.Prefix}}/">Главная</a> &rsaquo; <a href="{{.ListURL}}">{{.Label}}</a>
+  &rsaquo; {{if .IsEdit}}Изменение{{else}}Добавление{{end}}
+</div>
+<h1>{{.Title}}</h1>
+{{if .Errors}}<p class="errorsnote">Исправьте ошибки ниже.</p>{{end}}
+<div>
+<form method="post" action="">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <fieldset class="module">
+    {{range $f := .Fields}}
+    <div class="form-row{{if $f.ReadOnly}} readonly{{end}}{{if $f.Required}} required{{end}}">
+      <label>{{$f.Label}}</label>
+      <div class="field-box">
+        {{if $f.ReadOnly}}
+          <input type="text" value="{{$f.Value}}" disabled>
+        {{else if eq $f.Widget "textarea"}}
+          <textarea name="{{$f.Name}}" rows="6">{{$f.Value}}</textarea>
+        {{else if eq $f.Widget "checkbox"}}
+          <input type="checkbox" name="{{$f.Name}}" {{if $f.Checked}}checked{{end}}>
+        {{else if eq $f.Widget "select"}}
+          <select name="{{$f.Name}}">
+            <option value="">---------</option>
+            {{range $f.Options}}<option value="{{.Value}}"{{if index $f.Selected .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+          </select>
+        {{else if eq $f.Widget "multiselect"}}
+          <select name="{{$f.Name}}" multiple size="8">
+            {{range $f.Options}}<option value="{{.Value}}"{{if index $f.Selected .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+          </select>
+        {{else if eq $f.Type "number"}}
+          <input type="number" step="any" name="{{$f.Name}}" value="{{$f.Value}}">
+        {{else}}
+          <input type="{{$f.Type}}" name="{{$f.Name}}" value="{{$f.Value}}">
+        {{end}}
+        {{if $f.Error}}<ul class="errorlist"><li>{{$f.Error}}</li></ul>{{end}}
+      </div>
+    </div>
+    {{end}}
+  </fieldset>
+  <div class="submit-row">
+    <button class="default" type="submit" name="_save">Сохранить</button>
+    <button type="submit" name="_continue" value="1">Сохранить и продолжить редактирование</button>
+    {{if .IsEdit}}<a href="{{.DeleteURL}}" class="button danger delete-link">Удалить</a>{{end}}
+    <a href="{{.ListURL}}">Назад к списку</a>
+  </div>
+</form>
+</div>
+{{template "footer" .}}

@@ -2,6 +2,7 @@ package gd
 
 import (
 	"context"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -61,6 +62,9 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		t, err := LoadTemplates(a.Settings.TemplatesDir)
 		if err != nil {
 			log.Printf("[gd] templates: %v", err)
+		}
+		if t == nil {
+			t = &Templates{set: template.New("gd"), names: make(map[string]bool)}
 		}
 		a.tmpl = t
 	}

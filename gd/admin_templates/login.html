@@ -1,0 +1,21 @@
+{{template "header" .}}
+<div class="login-card">
+<h1>{{.Title}}</h1>
+<form method="post" action="{{.Prefix}}/login">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <input type="hidden" name="next" value="{{.Next}}">
+  {{if .Error}}<p class="errornote">{{.Error}}</p>{{end}}
+  <div class="form-row required">
+    <label for="id_username">Имя пользователя</label>
+    <input type="text" name="username" id="id_username" autofocus autocomplete="username" required>
+  </div>
+  <div class="form-row required">
+    <label for="id_password">Пароль</label>
+    <input type="password" name="password" id="id_password" autocomplete="current-password" required>
+  </div>
+  <div class="submit-row">
+    <button class="default" type="submit">Войти</button>
+  </div>
+</form>
+</div>
+{{template "footer" .}}
